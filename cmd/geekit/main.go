@@ -32,9 +32,6 @@ func main() {
 		if item.Typ == lexer.ItemEOF {
 			break
 		}
-		if item.Val == "" {
-			break
-		}
 	}
 }
 
