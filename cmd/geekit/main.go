@@ -1,40 +1,42 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"os"
 
+	"io/ioutil"
+
 	"github.com/vizicist/geekit/lexer"
+	"github.com/vizicist/geekit/parser"
 )
 
 func main() {
-
-	flag.Parse()
-
-	fmt.Printf("args = %v\n", flag.Args())
-
-	args := flag.Args()
-	if len(args) == 0 {
-		log.Fatal(usage())
+	if len(os.Args) != 2 {
+		printExit("invalid arguments. pass PL/0 program file as an argument")
 	}
-
-	b, err := os.ReadFile(args[0])
+	code, err := ioutil.ReadFile(os.Args[1])
 	if err != nil {
-		log.Fatal(err.Error())
+		printExit("could not open file", os.Args[1], "err:", err)
 	}
-	s := string(b)
-	_, itemChan := lexer.Lex("keykit", s)
-	for {
-		item := <-itemChan
-		fmt.Printf("%s", item.Val)
-		if item.Typ == lexer.ItemEOF {
-			break
-		}
+
+	tokens, err := lexer.Lex(string(code))
+	if err != nil {
+		printExit("lexing failed.", err)
 	}
+	fmt.Println("Tokens:", tokens)
+
+	fmt.Println("\nGrammar:", parser.Grammar)
+
+	parseTree, debugTree, err := parser.Parse(tokens)
+	if err != nil {
+		fmt.Print("Debug Tree:\n\n", debugTree)
+		printExit("parsing failed.", err)
+	}
+
+	fmt.Print("Parse Tree:\n\n", parseTree)
 }
 
-func usage() string {
-	return "usage: gk {file}"
+func printExit(a ...interface{}) {
+	fmt.Fprintln(os.Stderr, a...)
+	os.Exit(1)
 }

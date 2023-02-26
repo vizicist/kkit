@@ -1,4 +1,4 @@
-package lexer
+package kit
 
 import (
 	"fmt"
