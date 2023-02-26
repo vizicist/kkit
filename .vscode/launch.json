@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "geekit test",
+            "name": "gk test",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "cmd/geekit/main.go",
+            "program": "cmd/gk/main.go",
             "args": ["../../lib/util1.k"]
         }
     ]

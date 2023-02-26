@@ -7,7 +7,7 @@ import (
 
 	"github.com/alecthomas/chroma"
 	"github.com/shivamMg/rd"
-	pl0Tokens "github.com/shivamMg/rd/examples/pl0/tokens"
+	gkTokens "github.com/vizicist/geekit/tokens"
 )
 
 var lexer = chroma.MustNewLexer(
@@ -47,7 +47,7 @@ func Lex(code string) ([]rd.Token, error) {
 		case chroma.Error:
 			return nil, fmt.Errorf("invalid token: %v", token)
 		default:
-			pl0Token, ok := pl0Tokens.TokenFromString(strings.ToLower(token.Value))
+			pl0Token, ok := gkTokens.TokenFromString(strings.ToLower(token.Value))
 			if !ok {
 				return nil, fmt.Errorf("invalid token: %v", token)
 			}
