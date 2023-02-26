@@ -8,8 +8,8 @@ import (
 )
 
 type item struct {
-	typ itemType // Type, such as itemNumber
-	val string   // Value, such as "23.2"
+	Typ itemType // Type, such as itemNumber
+	Val string   // Value, such as "23.2"
 }
 
 type itemType int
@@ -17,17 +17,13 @@ type itemType int
 type stateFn func(*Lexer) stateFn
 
 const (
-	itemError itemType = iota
-	itemDot
-	itemEOF
-	itemElse
-	itemIf
-	itemFunction
-	itemText
-	itemNumber
-	itemLeftParen
-	itemRightParen
-	itemIdentifier
+	ItemError itemType = iota
+	ItemEOF
+	ItemText
+	ItemNumber
+	ItemLeftParen
+	ItemRightParen
+	ItemIdentifier
 )
 
 type Lexer struct {
@@ -40,16 +36,16 @@ type Lexer struct {
 }
 
 func (i item) String() string {
-	switch i.typ {
-	case itemEOF:
+	switch i.Typ {
+	case ItemEOF:
 		return "EOF"
-	case itemError:
-		return i.val
+	case ItemError:
+		return i.Val
 	}
-	if len(i.val) > 10 {
-		return fmt.Sprintf("%.10q...", i.val)
+	if len(i.Val) > 10 {
+		return fmt.Sprintf("%.10q...", i.Val)
 	}
-	return fmt.Sprintf("%q", i.val)
+	return fmt.Sprintf("%q", i.Val)
 }
 
 func Lex(name, input string) (*Lexer, chan item) {
@@ -80,9 +76,9 @@ const identifierChar1 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS
 const identifierCharN = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func lexNormal(l *Lexer) stateFn {
-	fmt.Printf("lexNormal start: l = %v\n", l)
+	// fmt.Printf("lexNormal start: start=%d pos=%d width=%d\n", l.start, l.pos, l.width)
 	for {
-		fmt.Printf("lexNormal : l = %v\n", l)
+		// fmt.Printf("lexNormal loop: start=%d pos=%d width=%d\n", l.start, l.pos, l.width)
 		if l.accept(identifierChar1) {
 			return lexIdentifier
 		}
@@ -92,13 +88,13 @@ func lexNormal(l *Lexer) stateFn {
 		}
 		if l.accept("(") {
 			if l.pos > l.start {
-				l.emit(itemLeftParen)
+				l.emit(ItemLeftParen)
 			}
 			return lexNormal // next state
 		}
 		if l.accept(")") {
 			if l.pos > l.start {
-				l.emit(itemRightParen)
+				l.emit(ItemRightParen)
 			}
 			return lexNormal // next state
 		}
@@ -107,10 +103,7 @@ func lexNormal(l *Lexer) stateFn {
 		}
 	}
 	// Correctly reached EOF
-	if l.pos > l.start {
-		l.emit(itemText)
-	}
-	l.emit(itemEOF)
+	l.emit(ItemEOF)
 	return nil
 }
 
@@ -130,7 +123,7 @@ func (l *Lexer) next() (rune rune) {
 	}
 	rune, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += l.width
-	// fmt.Printf("next() returning %v, pos is now %d\n", rune, l.pos, l.width)
+	// fmt.Printf("next() returning %v pos is %d width is %d\n", rune, l.pos, l.width)
 	return rune
 }
 
@@ -167,8 +160,8 @@ func (l *Lexer) acceptRun(valid string) {
 
 func lexIdentifier(l *Lexer) stateFn {
 	l.acceptRun(identifierCharN)
-	l.emit(itemIdentifier)
-	return lexIdentifier
+	l.emit(ItemIdentifier)
+	return lexNormal
 }
 
 func lexNumber(l *Lexer) stateFn {
@@ -192,7 +185,7 @@ func lexNumber(l *Lexer) stateFn {
 		return l.errorf("bad number syntax: %q",
 			l.input[l.start:l.pos])
 	}
-	l.emit(itemNumber)
+	l.emit(ItemNumber)
 	return lexNormal
 
 }
@@ -202,7 +195,7 @@ func lexNumber(l *Lexer) stateFn {
 // state, terminating l.run.
 func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
 	l.items <- item{
-		itemError,
+		ItemError,
 		fmt.Sprintf(format, args...),
 	}
 	return nil

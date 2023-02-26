@@ -1,3 +1,3 @@
-module github.com/vizicist/gk
+module github.com/vizicist/geekit
 
 go 1.20

@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vizicist/gk/lexer"
+	"github.com/vizicist/geekit/lexer"
 )
 
 func main() {
@@ -22,18 +22,20 @@ func main() {
 
 	b, err := os.ReadFile(args[0])
 	if err != nil {
-		fmt.Print(err)
+		log.Fatal(err.Error())
 	}
 	s := string(b)
-	gklex, itemChan := lexer.Lex("keykit", s)
+	_, itemChan := lexer.Lex("keykit", s)
 	for {
 		item := <-itemChan
-		fmt.Printf("item=%v\n", item)
-		if item == itemEOF {
+		fmt.Printf("%s", item.Val)
+		if item.Typ == lexer.ItemEOF {
+			break
+		}
+		if item.Val == "" {
 			break
 		}
 	}
-	fmt.Printf("final lex is %v\n", *gklex)
 }
 
 func usage() string {
