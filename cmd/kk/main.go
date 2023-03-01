@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vizicist/geekit/kit"
+	"github.com/vizicist/kkit/kit"
 )
 
 func main() {
@@ -26,12 +26,21 @@ func main() {
 	}
 	s := string(b)
 	_, itemChan := kit.Lex("keykit", s)
+
+	tokeArr := []kit.Token{}
 	for {
 		item := <-itemChan
 		fmt.Printf("%s", item.Val)
 		if item.Typ == kit.ItemEOF {
 			break
 		}
+		tokeArr = append(tokeArr, Token{Typ})
+	}
+
+	tokens := []kit.Token{"a", "b"}
+	b := kit.NewBuilder(tokens)
+	if ok := A(b); ok {
+		fmt.Print(b.ParseTree())
 	}
 }
 

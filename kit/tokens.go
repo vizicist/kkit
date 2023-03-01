@@ -1,5 +1,6 @@
 package kit
 
+/*
 type Token int
 
 const (
@@ -51,3 +52,5 @@ func TokenFromString(s string) (Token, bool) {
 	token, ok := m[s]
 	return token, ok
 }
+
+*/
