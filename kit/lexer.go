@@ -6,17 +6,17 @@ import (
 	"unicode/utf8"
 )
 
-type item struct {
-	Typ itemType // Type, such as itemNumber
-	Val string   // Value, such as "23.2"
+type Token struct {
+	Typ tokenType // Type, such as itemNumber
+	Val string    // Value, such as "23.2"
 }
 
-type itemType int
+type tokenType int
 
 type stateFn func(*Lexer) stateFn
 
 const (
-	ItemError itemType = iota
+	ItemError tokenType = iota
 	ItemEOF
 	ItemText
 	ItemNumber
@@ -69,10 +69,10 @@ type Lexer struct {
 	start int
 	pos   int
 	width int
-	items chan item
+	items chan Token
 }
 
-func (i item) String() string {
+func (i Token) String() string {
 	switch i.Typ {
 	case ItemEOF:
 		return "EOF"
@@ -85,11 +85,11 @@ func (i item) String() string {
 	return fmt.Sprintf("%q", i.Val)
 }
 
-func Lex(name, input string) (*Lexer, chan item) {
+func Lex(name, input string) (*Lexer, chan Token) {
 	l := &Lexer{
 		name:  name,
 		input: input,
-		items: make(chan item),
+		items: make(chan Token),
 	}
 	go l.Run()
 	return l, l.items
@@ -102,8 +102,8 @@ func (l *Lexer) Run() {
 	close(l.items) // No more tokens will be delivered
 }
 
-func (l *Lexer) emit(t itemType) {
-	l.items <- item{t, l.input[l.start:l.pos]}
+func (l *Lexer) emit(t tokenType) {
+	l.items <- Token{t, l.input[l.start:l.pos]}
 	l.start = l.pos
 }
 
@@ -394,7 +394,7 @@ func lexNumber(l *Lexer) stateFn {
 // by passing back a nil pointer that will be the next
 // state, terminating l.run.
 func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
-	l.items <- item{
+	l.items <- Token{
 		ItemError,
 		fmt.Sprintf(format, args...),
 	}

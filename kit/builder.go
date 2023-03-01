@@ -126,7 +126,7 @@ func (b *Builder) Add(token Token) {
 //
 // Internally Match calls Next to grab the next token. In case of a match it adds
 // it by calling Add. Debug info is also added to the debug tree.
-func (b *Builder) Match(token Token) (ok bool) {
+func (b *Builder) Match(tokenTyp tokenType) (ok bool) {
 	b.mustEnter("Match")
 	debugMsg := ""
 	defer func() {
@@ -136,16 +136,16 @@ func (b *Builder) Match(token Token) (ok bool) {
 
 	next, ok := b.Next()
 	if !ok {
-		debugMsg = fmt.Sprint("<no tokens left> ≠ ", token)
+		debugMsg = fmt.Sprint("<no tokens left> ≠ ", tokenTyp)
 		return false
 	}
-	if next != token {
+	if next.Typ != tokenTyp {
 		b.current--
-		debugMsg = fmt.Sprint(next, " ≠ ", token)
+		debugMsg = fmt.Sprint(next.Typ, " ≠ ", tokenTyp)
 		return false
 	}
-	b.Add(token)
-	debugMsg = fmt.Sprint(next, " = ", token)
+	b.Add(next)
+	debugMsg = fmt.Sprint(next.Typ, " = ", tokenTyp)
 	return true
 }
 

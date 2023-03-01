@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "cmd/kk/main.go",
-            "args": ["../../lib/util1.k"]
+            "args": ["test.k"]
         }
     ]
 }

@@ -25,23 +25,13 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	s := string(b)
-	_, itemChan := kit.Lex("keykit", s)
 
-	tokeArr := []kit.Token{}
-	for {
-		item := <-itemChan
-		fmt.Printf("%s", item.Val)
-		if item.Typ == kit.ItemEOF {
-			break
-		}
-		tokeArr = append(tokeArr, Token{Typ})
+	parseTree, debugTree, err := kit.ParseString(s)
+	if err != nil {
+		fmt.Print("Debug Tree:\n\n", debugTree)
+		fmt.Printf("Parsing failed. err=%s\n", err.Error())
 	}
-
-	tokens := []kit.Token{"a", "b"}
-	b := kit.NewBuilder(tokens)
-	if ok := A(b); ok {
-		fmt.Print(b.ParseTree())
-	}
+	fmt.Print("Parse Tree:\n\n", parseTree)
 }
 
 func usage() string {

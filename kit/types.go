@@ -2,14 +2,6 @@ package kit
 
 import "github.com/shivamMg/ppds/tree"
 
-// Token represents a token received after tokenization.
-// type Token interface{}
-
-type Token struct {
-	Typ itemType // Type, such as itemNumber
-	Val string   // Value, such as "23.2"
-}
-
 // Tree is a parse tree node. Symbol can either be a terminal (Token) or a non-terminal
 // (see Builder's Enter method). Tokens matched using Builder's Match method or added
 // using Builder's Add method, can be retrieved by type asserting Symbol.
