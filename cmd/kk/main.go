@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vizicist/geekit/lexer"
+	"github.com/vizicist/geekit/kit"
 )
 
 func main() {
@@ -25,11 +25,11 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	s := string(b)
-	_, itemChan := lexer.Lex("keykit", s)
+	_, itemChan := kit.Lex("keykit", s)
 	for {
 		item := <-itemChan
 		fmt.Printf("%s", item.Val)
-		if item.Typ == lexer.ItemEOF {
+		if item.Typ == kit.ItemEOF {
 			break
 		}
 	}

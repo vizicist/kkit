@@ -3,7 +3,6 @@ package kit
 import (
 	"fmt"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -21,8 +20,46 @@ const (
 	ItemEOF
 	ItemText
 	ItemNumber
+	ItemSpace
+	ItemPeriod
+	ItemMinus
+	ItemPercent
+	ItemPlus
+	ItemEquals
+	ItemOr
+	ItemAnd
+	ItemBitwiseOr
+	ItemBitwiseAnd
+	ItemEqualsEquals
+	ItemLessThan
+	ItemGreaterThanOrEqual
+	ItemLessThanOrEqual
+	ItemGreaterThan
+	ItemAsterisk
+	ItemForwardSlash
+	ItemBang
+	ItemPound
+	ItemInvalid
+	ItemAt
+	ItemDollar
+	ItemComment
+	ItemDoubleQuote
+	ItemSingleQuote
+	ItemBackQuote
+	ItemComma
+	ItemTilda
+	ItemDoubleTilda
+	ItemColon
+	ItemSemiColon
+	ItemNewline
+	ItemReturn
+	ItemQuestionMark
 	ItemLeftParen
 	ItemRightParen
+	ItemLeftBrace
+	ItemRightBrace
+	ItemLeftBracket
+	ItemRightBracket
 	ItemIdentifier
 )
 
@@ -72,39 +109,123 @@ func (l *Lexer) emit(t itemType) {
 
 const EOF = -1
 
-const identifierChar1 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-const identifierCharN = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const numberChars = "0123456789"
+const identifierChar1 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+const identifierCharN = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
 
 func lexNormal(l *Lexer) stateFn {
-	// fmt.Printf("lexNormal start: start=%d pos=%d width=%d\n", l.start, l.pos, l.width)
-	for {
-		// fmt.Printf("lexNormal loop: start=%d pos=%d width=%d\n", l.start, l.pos, l.width)
-		if l.accept(identifierChar1) {
+
+	firstChar := l.next()
+	if firstChar == EOF {
+		l.emit(ItemEOF)
+		return nil
+	}
+	switch firstChar {
+	case '!':
+		l.emit(ItemBang)
+	case '#':
+		return lexComment
+	case '$':
+		l.emit(ItemDollar)
+	case '(':
+		l.emit(ItemLeftParen)
+	case ')':
+		l.emit(ItemRightParen)
+	case '{':
+		l.emit(ItemLeftBrace)
+	case '}':
+		l.emit(ItemRightBrace)
+	case '[':
+		l.emit(ItemLeftBracket)
+	case ']':
+		l.emit(ItemRightBracket)
+	case '+':
+		l.emit(ItemPlus)
+	case '-':
+		l.emit(ItemMinus)
+	case '*':
+		l.emit(ItemAsterisk)
+	case '/':
+		l.emit(ItemForwardSlash)
+	case '%':
+		l.emit(ItemPercent)
+	case '\\', '@':
+		return l.errorf("Unexpected char in lexNormal")
+	case '.':
+		l.emit(ItemPeriod)
+	case ',':
+		l.emit(ItemComma)
+	case ':':
+		l.emit(ItemColon)
+	case ';':
+		l.emit(ItemSemiColon)
+	case '\n':
+		l.emit(ItemNewline)
+	case '\r':
+		l.emit(ItemReturn)
+	case '?':
+		l.emit(ItemQuestionMark)
+	case '<':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(ItemLessThanOrEqual)
+		} else {
+			l.emit(ItemLessThan)
+		}
+	case '>':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(ItemGreaterThanOrEqual)
+		} else {
+			l.emit(ItemGreaterThan)
+		}
+	case '=':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(ItemEqualsEquals)
+		} else {
+			l.emit(ItemEquals)
+		}
+	case '|':
+		if l.peek() == '|' {
+			l.next()
+			l.emit(ItemOr)
+		} else {
+			l.emit(ItemBitwiseOr)
+		}
+	case '~':
+		if l.peek() == '~' {
+			l.next()
+			l.emit(ItemDoubleTilda)
+		} else {
+			l.emit(ItemTilda)
+		}
+	case '&':
+		if l.peek() == '&' {
+			l.next()
+			l.emit(ItemAnd)
+		} else {
+			l.emit(ItemBitwiseAnd)
+		}
+	case ' ', '\t':
+		l.acceptRun(" \t")
+		l.emit(ItemSpace)
+	case '"':
+		return lexDoubleQuote
+	case '\'':
+		return lexSingleQuote
+	case '`':
+		return lexBackQuote
+	default:
+		if strings.ContainsRune(numberChars, firstChar) {
+			return lexNumber
+		}
+		if strings.ContainsRune(identifierChar1, firstChar) {
 			return lexIdentifier
 		}
-		if l.accept(" ") {
-			l.ignore()
-			return lexNormal
-		}
-		if l.accept("(") {
-			if l.pos > l.start {
-				l.emit(ItemLeftParen)
-			}
-			return lexNormal // next state
-		}
-		if l.accept(")") {
-			if l.pos > l.start {
-				l.emit(ItemRightParen)
-			}
-			return lexNormal // next state
-		}
-		if l.next() == EOF {
-			break
-		}
+		return l.errorf("Unexpected non-identifier in lexNormal")
 	}
-	// Correctly reached EOF
-	l.emit(ItemEOF)
-	return nil
+	return lexNormal // though we could use a loop, here
 }
 
 /*
@@ -118,12 +239,10 @@ func lexFunction(l *Lexer) stateFn {
 func (l *Lexer) next() (rune rune) {
 	if l.pos >= len(l.input) {
 		l.width = 0
-		fmt.Printf("next() returning EOF!\n")
 		return EOF
 	}
 	rune, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += l.width
-	// fmt.Printf("next() returning %v pos is %d width is %d\n", rune, l.pos, l.width)
 	return rune
 }
 
@@ -164,6 +283,95 @@ func lexIdentifier(l *Lexer) stateFn {
 	return lexNormal
 }
 
+func lexSingleQuote(l *Lexer) stateFn {
+	inEscape := false
+	for {
+		rune := l.next()
+		if rune == EOF {
+			return l.errorf("Unterminated single quote!?")
+		}
+		if inEscape {
+			if !strings.ContainsRune("bnrt\\", rune) {
+				return l.errorf("Bad single quote escape char!?")
+			}
+			inEscape = false
+			continue
+		}
+		if rune == '\'' {
+			l.emit(ItemSingleQuote)
+			return lexNormal
+		}
+		if rune == '\\' {
+			inEscape = true
+		}
+	}
+	// not reached
+}
+
+func lexDoubleQuote(l *Lexer) stateFn {
+	inEscape := false
+	for {
+		rune := l.next()
+		if rune == EOF {
+			return l.errorf("Unterminated double quote!?")
+		}
+		if inEscape {
+			if !strings.ContainsRune("bnrt\"\\", rune) {
+				return l.errorf("Bad double quote escape char!?")
+			}
+			inEscape = false
+			continue
+		}
+		if rune == '"' {
+			l.emit(ItemDoubleQuote)
+			return lexNormal
+		}
+		if rune == '\\' {
+			inEscape = true
+		}
+	}
+	// not reached
+}
+
+func lexBackQuote(l *Lexer) stateFn {
+	inEscape := false
+	for {
+		rune := l.next()
+		if rune == EOF {
+			return l.errorf("Unterminated back quote!?")
+		}
+		if inEscape {
+			if !strings.ContainsRune("bnrt\\", rune) {
+				return l.errorf("Bad back quote escape char!?")
+			}
+			inEscape = false
+			continue
+		}
+		if rune == '`' {
+			l.emit(ItemBackQuote)
+			return lexNormal
+		}
+		if rune == '\\' {
+			inEscape = true
+		}
+	}
+	// not reached
+}
+
+func lexComment(l *Lexer) stateFn {
+	for {
+		rune := l.next()
+		if rune == EOF {
+			return l.errorf("Unterminated back quote!?")
+		}
+		if rune == '\n' {
+			l.emit(ItemComment)
+			return lexNormal
+		}
+	}
+	// not reached
+}
+
 func lexNumber(l *Lexer) stateFn {
 	// Optional leading sign.
 	l.accept("+-")
@@ -176,15 +384,7 @@ func lexNumber(l *Lexer) stateFn {
 	if l.accept(".") {
 		l.acceptRun(digits)
 	}
-	if l.accept("eE") {
-		l.accept("+-")
-		l.acceptRun("0123456789")
-	}
-	if unicode.IsLetter(l.peek()) {
-		l.next()
-		return l.errorf("bad number syntax: %q",
-			l.input[l.start:l.pos])
-	}
+	l.accept("b")
 	l.emit(ItemNumber)
 	return lexNormal
 

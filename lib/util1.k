@@ -1,3 +1,5 @@
+a = this || that
+
 function argvlist() {
 	return(argv(0,nargs()))
 }

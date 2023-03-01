@@ -5,11 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "gk test",
+            "name": "kk test",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "cmd/gk/main.go",
+            "program": "cmd/kk/main.go",
             "args": ["../../lib/util1.k"]
         }
     ]
