@@ -96,9 +96,14 @@ func (b *Builder) Next() (token Token, ok bool) {
 
 func (b *Builder) next() (token Token, ok bool) {
 	if b.current == len(b.tokens)-1 {
+		fmt.Printf("[next=false]\n")
 		return Token{}, false
 	}
 	b.current++
+	fmt.Printf("[next=%s]\n", b.tokens[b.current].Val)
+	if b.tokens[b.current].Val == "\r\nif" {
+		fmt.Printf("HEY!!\n")
+	}
 	return b.tokens[b.current], true
 }
 
@@ -110,6 +115,7 @@ func (b *Builder) Backtrack() {
 	e := b.stack.peek()
 	b.current = e.index
 	e.nonTerm.Subtrees = []*Tree{}
+	fmt.Printf("Backtrack()\n")
 }
 
 // Add adds token as a symbol in the parse tree. It's added under the current

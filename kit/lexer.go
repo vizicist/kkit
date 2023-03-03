@@ -30,6 +30,7 @@ const (
 	ItemAnd
 	ItemBitwiseOr
 	ItemBitwiseAnd
+	ItemNotEquals
 	ItemEqualsEquals
 	ItemLessThan
 	ItemGreaterThanOrEqual
@@ -37,10 +38,12 @@ const (
 	ItemGreaterThan
 	ItemAsterisk
 	ItemForwardSlash
-	ItemBang
+	ItemNot
 	ItemPound
 	ItemInvalid
 	ItemAt
+	ItemIf
+	ItemElse
 	ItemDollar
 	ItemComment
 	ItemDoubleQuote
@@ -104,7 +107,8 @@ func (l *Lexer) Run() {
 }
 
 func (l *Lexer) emit(t tokenType) {
-	l.items <- Token{t, l.input[l.start:l.pos]}
+	val := l.input[l.start:l.pos]
+	l.items <- Token{t, val}
 	l.start = l.pos
 }
 
@@ -122,8 +126,6 @@ func lexNormal(l *Lexer) stateFn {
 		return nil
 	}
 	switch firstChar {
-	case '!':
-		l.emit(ItemBang)
 	case '#':
 		return lexComment
 	case '$':
@@ -162,6 +164,13 @@ func lexNormal(l *Lexer) stateFn {
 		l.emit(ItemSemiColon)
 	case '?':
 		l.emit(ItemQuestionMark)
+	case '!':
+		if l.peek() == '=' {
+			l.next()
+			l.emit(ItemNotEquals)
+		} else {
+			l.emit(ItemNot)
+		}
 	case '<':
 		if l.peek() == '=' {
 			l.next()
@@ -206,11 +215,14 @@ func lexNormal(l *Lexer) stateFn {
 		}
 	case ' ', '\t':
 		l.acceptRun(" \t")
+		l.ignore()
 		// Don't emit anything
 	case '\n':
 		l.lineno++
+		l.ignore()
 		// Don't emit anything
 	case '\r':
+		l.ignore()
 		// Don't emit anything
 	case '"':
 		return lexDoubleQuote
@@ -281,7 +293,12 @@ func (l *Lexer) acceptRun(valid string) {
 
 func lexIdentifier(l *Lexer) stateFn {
 	l.acceptRun(identifierCharN)
-	l.emit(ItemIdentifier)
+	val := l.input[l.start:l.pos]
+	if val == "if" {
+		l.emit(ItemIf)
+	} else {
+		l.emit(ItemIdentifier)
+	}
 	return lexNormal
 }
 
@@ -364,7 +381,7 @@ func lexComment(l *Lexer) stateFn {
 	for {
 		rune := l.next()
 		if rune == EOF {
-			return l.errorf("Unterminated back quote!?")
+			return l.errorf("Unterminated comment!?")
 		}
 		if rune == '\n' {
 			l.emit(ItemComment)
