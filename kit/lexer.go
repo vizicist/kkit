@@ -16,11 +16,11 @@ type tokenType int
 type stateFn func(*Lexer) stateFn
 
 const (
-	ItemError tokenType = iota
+	ItemNothing tokenType = iota
+	ItemError
 	ItemEOF
 	ItemText
 	ItemNumber
-	ItemSpace
 	ItemPeriod
 	ItemMinus
 	ItemPercent
@@ -64,12 +64,13 @@ const (
 )
 
 type Lexer struct {
-	name  string // used only for error reports
-	input string // the string being parsed
-	start int
-	pos   int
-	width int
-	items chan Token
+	name   string // used only for error reports
+	input  string // the string being parsed
+	start  int
+	pos    int
+	width  int
+	items  chan Token
+	lineno int
 }
 
 func (i Token) String() string {
@@ -159,10 +160,6 @@ func lexNormal(l *Lexer) stateFn {
 		l.emit(ItemColon)
 	case ';':
 		l.emit(ItemSemiColon)
-	case '\n':
-		l.emit(ItemNewline)
-	case '\r':
-		l.emit(ItemReturn)
 	case '?':
 		l.emit(ItemQuestionMark)
 	case '<':
@@ -209,7 +206,12 @@ func lexNormal(l *Lexer) stateFn {
 		}
 	case ' ', '\t':
 		l.acceptRun(" \t")
-		l.emit(ItemSpace)
+		// Don't emit anything
+	case '\n':
+		l.lineno++
+		// Don't emit anything
+	case '\r':
+		// Don't emit anything
 	case '"':
 		return lexDoubleQuote
 	case '\'':

@@ -29,6 +29,7 @@ func main() {
 	parseTree, debugTree, err := kit.ParseString(s)
 	if err != nil {
 		fmt.Print("Debug Tree:\n\n", debugTree)
+		// fmt.Print("Parse Tree:\n\n", parseTree)
 		fmt.Printf("Parsing failed. err=%s\n", err.Error())
 	}
 	fmt.Print("Parse Tree:\n\n", parseTree)

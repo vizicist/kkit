@@ -19,7 +19,8 @@ func ParseString(prog string) (parseTree *Tree, debugTree *DebugTree, err error)
 	}
 
 	b := NewBuilder(tokens)
-	if ok := Program(b); ok && b.Err() == nil {
+	ok := Program(b)
+	if ok && b.Err() == nil {
 		return b.ParseTree(), b.DebugTree(), nil
 	}
 	return nil, b.DebugTree(), b.Err()
@@ -30,45 +31,60 @@ func ParseString(prog string) (parseTree *Tree, debugTree *DebugTree, err error)
 func Program(b *Builder) (ok bool) {
 	defer b.Enter("Program").Exit(&ok)
 
-	if Term(b) && b.Match(ItemPlus) && Program(b) {
-		return true
+	// A Program is a series of Stmts
+	for Stmt(b) {
+		fmt.Printf("Stmt okay, going for another\n")
 	}
-	b.Backtrack()
-	if Term(b) && b.Match(ItemMinus) && Program(b) {
-		return true
-	}
-	b.Backtrack()
-	return Term(b)
+	return true
 }
 
-func Term(b *Builder) (ok bool) {
-	defer b.Enter("Term").Exit(&ok)
+func Stmt(b *Builder) (ok bool) {
+	defer b.Enter("Stmt").Exit(&ok)
 
-	if Factor(b) && b.Match(ItemAsterisk) && Term(b) {
+	if b.Match(ItemIdentifier) && Expect(b, ItemLeftParen) && Expr(b) && Expect(b, ItemRightParen) {
+		return true
+	}
+	if b.Match(ItemComment) {
 		return true
 	}
 	b.Backtrack()
-	if Factor(b) && b.Match(ItemForwardSlash) && Term(b) {
-		return true
-	}
-	b.Backtrack()
-	return Factor(b)
+	return false
 }
 
-func Factor(b *Builder) (ok bool) {
-	defer b.Enter("Factor").Exit(&ok)
-
-	if b.Match(ItemLeftParen) && Program(b) && b.Match(ItemRightParen) {
+func Expect(b *Builder, tokenType tokenType) (ok bool) {
+	next, ok := b.Peek(1)
+	if ok && next.Typ == tokenType {
+		b.Next()
 		return true
 	}
-	b.Backtrack()
-	if b.Match(ItemMinus) && Factor(b) {
-		return true
-	}
-	b.Backtrack()
-	return Number(b)
+	return false
 }
 
+func LeftParen(b *Builder) (ok bool) {
+	next, ok := b.Peek(1)
+	if ok && next.Typ == ItemLeftParen {
+		b.Next()
+		return true
+	}
+	return false
+
+}
+
+func Expr(b *Builder) (ok bool) {
+	defer b.Enter("Expr").Exit(&ok)
+
+	if b.Match(ItemNumber) {
+		return true
+	}
+	b.Backtrack()
+	if b.Match(ItemLeftParen) && Expr(b) && b.Match(ItemRightParen) {
+		return true
+	}
+	b.Backtrack()
+	return false
+}
+
+/*
 func Number(b *Builder) (ok bool) {
 	defer b.Enter("Number").Exit(&ok)
 
@@ -83,3 +99,5 @@ func Number(b *Builder) (ok bool) {
 	b.Backtrack()
 	return false
 }
+
+*/
