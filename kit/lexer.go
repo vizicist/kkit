@@ -17,7 +17,9 @@ type stateFn func(*Lexer) stateFn
 
 const (
 	ItemNothing tokenType = iota
+	ItemLineno
 	ItemError
+	ItemWarn
 	ItemEOF
 	ItemText
 	ItemNumber
@@ -42,8 +44,6 @@ const (
 	ItemPound
 	ItemInvalid
 	ItemAt
-	ItemIf
-	ItemElse
 	ItemDollar
 	ItemComment
 	ItemDoubleQuote
@@ -55,7 +55,6 @@ const (
 	ItemColon
 	ItemSemiColon
 	ItemNewline
-	ItemReturn
 	ItemQuestionMark
 	ItemLeftParen
 	ItemRightParen
@@ -63,7 +62,12 @@ const (
 	ItemRightBrace
 	ItemLeftBracket
 	ItemRightBracket
+	// words
 	ItemIdentifier
+	ItemIf
+	ItemFunction
+	ItemElse
+	ItemReturn
 )
 
 type Lexer struct {
@@ -91,9 +95,10 @@ func (i Token) String() string {
 
 func Lex(name, input string) (*Lexer, chan Token) {
 	l := &Lexer{
-		name:  name,
-		input: input,
-		items: make(chan Token),
+		name:   name,
+		input:  input,
+		items:  make(chan Token),
+		lineno: 1,
 	}
 	go l.Run()
 	return l, l.items
@@ -109,6 +114,7 @@ func (l *Lexer) Run() {
 func (l *Lexer) emit(t tokenType) {
 	val := l.input[l.start:l.pos]
 	l.items <- Token{t, val}
+	fmt.Printf("<<Emit: %v>>\n", Token{t, val})
 	l.start = l.pos
 }
 
@@ -123,6 +129,7 @@ func lexNormal(l *Lexer) stateFn {
 	firstChar := l.next()
 	if firstChar == EOF {
 		l.emit(ItemEOF)
+		// The channel is closed in l.Run()
 		return nil
 	}
 	switch firstChar {
@@ -152,8 +159,6 @@ func lexNormal(l *Lexer) stateFn {
 		l.emit(ItemForwardSlash)
 	case '%':
 		l.emit(ItemPercent)
-	case '\\', '@':
-		return l.errorf("Unexpected char in lexNormal")
 	case '.':
 		l.emit(ItemPeriod)
 	case ',':
@@ -220,7 +225,7 @@ func lexNormal(l *Lexer) stateFn {
 	case '\n':
 		l.lineno++
 		l.ignore()
-		// Don't emit anything
+		l.emit(ItemLineno) // so parser can keep track of line numbers
 	case '\r':
 		l.ignore()
 		// Don't emit anything
@@ -237,7 +242,7 @@ func lexNormal(l *Lexer) stateFn {
 		if strings.ContainsRune(identifierChar1, firstChar) {
 			return lexIdentifier
 		}
-		return l.errorf("Unexpected non-identifier in lexNormal")
+		l.warnf("unexpected char (%d,0x%x,'%c')", firstChar, firstChar, firstChar)
 	}
 	return lexNormal // though we could use a loop, here
 }
@@ -291,11 +296,19 @@ func (l *Lexer) acceptRun(valid string) {
 	l.backup()
 }
 
+var Reserved = map[string]tokenType{
+	"if":       ItemIf,
+	"function": ItemFunction,
+	"else":     ItemElse,
+	"return":   ItemReturn,
+}
+
 func lexIdentifier(l *Lexer) stateFn {
 	l.acceptRun(identifierCharN)
 	val := l.input[l.start:l.pos]
-	if val == "if" {
-		l.emit(ItemIf)
+	item, ok := Reserved[val]
+	if ok {
+		l.emit(item)
 	} else {
 		l.emit(ItemIdentifier)
 	}
@@ -307,11 +320,11 @@ func lexSingleQuote(l *Lexer) stateFn {
 	for {
 		rune := l.next()
 		if rune == EOF {
-			return l.errorf("Unterminated single quote!?")
+			return l.errorf("unterminated single quote")
 		}
 		if inEscape {
 			if !strings.ContainsRune("bnrt\\", rune) {
-				return l.errorf("Bad single quote escape char!?")
+				l.warnf("bad single quote escape char")
 			}
 			inEscape = false
 			continue
@@ -332,11 +345,11 @@ func lexDoubleQuote(l *Lexer) stateFn {
 	for {
 		rune := l.next()
 		if rune == EOF {
-			return l.errorf("Unterminated double quote!?")
+			return l.errorf("unterminated double quote")
 		}
 		if inEscape {
 			if !strings.ContainsRune("bnrt\"\\", rune) {
-				return l.errorf("Bad double quote escape char!?")
+				l.warnf("bad double quote escape char")
 			}
 			inEscape = false
 			continue
@@ -357,11 +370,11 @@ func lexBackQuote(l *Lexer) stateFn {
 	for {
 		rune := l.next()
 		if rune == EOF {
-			return l.errorf("Unterminated back quote!?")
+			return l.errorf("unterminated back quote")
 		}
 		if inEscape {
 			if !strings.ContainsRune("bnrt\\", rune) {
-				return l.errorf("Bad back quote escape char!?")
+				l.warnf("bad back quote escape char")
 			}
 			inEscape = false
 			continue
@@ -381,7 +394,7 @@ func lexComment(l *Lexer) stateFn {
 	for {
 		rune := l.next()
 		if rune == EOF {
-			return l.errorf("Unterminated comment!?")
+			return l.errorf("unterminated comment")
 		}
 		if rune == '\n' {
 			l.emit(ItemComment)
@@ -415,7 +428,19 @@ func lexNumber(l *Lexer) stateFn {
 func (l *Lexer) errorf(format string, args ...interface{}) stateFn {
 	l.items <- Token{
 		ItemError,
-		fmt.Sprintf(format, args...),
+		l.addLineno(fmt.Sprintf(format, args...)),
 	}
 	return nil
+}
+
+// warnf returns a warning token but doesn't terminate the scan
+func (l *Lexer) warnf(format string, args ...interface{}) {
+	l.items <- Token{
+		ItemWarn,
+		l.addLineno(fmt.Sprintf(format, args...)),
+	}
+}
+
+func (l *Lexer) addLineno(s string) string {
+	return fmt.Sprintf("%s at line %d", s, l.lineno)
 }

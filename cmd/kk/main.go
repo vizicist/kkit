@@ -13,7 +13,7 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Printf("args = %v\n", flag.Args())
+	// fmt.Printf("args = %v\n", flag.Args())
 
 	args := flag.Args()
 	if len(args) == 0 {

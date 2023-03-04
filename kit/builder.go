@@ -2,7 +2,6 @@ package kit
 
 import (
 	"fmt"
-	"log"
 )
 
 // ParsingError is error returned by Builder's Err method in case an error occurs
@@ -33,6 +32,7 @@ type Builder struct {
 	finalDebugTree *DebugTree
 	finalErr       *ParsingError
 	skip           bool
+	lineno         int
 }
 
 // NewBuilder returns a new Builder for the tokens.
@@ -63,7 +63,6 @@ func NewBuilder(tokens []Token) *Builder {
 //
 // ok is false if i lies outside original index range, else true.
 func (b *Builder) Peek(i int) (token Token, ok bool) {
-	b.mustEnter("Peek")
 	j := b.current + i
 	if j < 0 || j >= len(b.tokens) {
 		return Token{}, false
@@ -71,39 +70,11 @@ func (b *Builder) Peek(i int) (token Token, ok bool) {
 	return b.tokens[j], true
 }
 
-// Check is a convenience function over Peek. It calls Peek to check if returned
-// token is same as token, and returned ok is true.
-func (b *Builder) Check(token Token, i int) bool {
-	b.mustEnter("Check")
-	peekedToken, ok := b.Peek(i)
-	return peekedToken == token && ok
-}
-
-// CheckOrNotOK is a convenience function over Peek. It calls Peek to check if
-// returned token is same as token, or returned ok is false.
-func (b *Builder) CheckOrNotOK(token Token, i int) bool {
-	b.mustEnter("CheckOrNotOK")
-	peekedToken, ok := b.Peek(i)
-	return peekedToken == token || !ok
-}
-
-// Next increments the current index to return the next token. ok is false if
-// no tokens are left, else true.
 func (b *Builder) Next() (token Token, ok bool) {
-	b.mustEnter("Next")
-	return b.next()
-}
-
-func (b *Builder) next() (token Token, ok bool) {
 	if b.current == len(b.tokens)-1 {
-		fmt.Printf("[next=false]\n")
 		return Token{}, false
 	}
 	b.current++
-	fmt.Printf("[next=%s]\n", b.tokens[b.current].Val)
-	if b.tokens[b.current].Val == "\r\nif" {
-		fmt.Printf("HEY!!\n")
-	}
 	return b.tokens[b.current], true
 }
 
@@ -111,17 +82,14 @@ func (b *Builder) next() (token Token, ok bool) {
 // and sets it to the value it was before entering this function. It also discards any
 // matches done inside the function.
 func (b *Builder) Backtrack() {
-	b.mustEnter("Backtrack")
 	e := b.stack.peek()
 	b.current = e.index
 	e.nonTerm.Subtrees = []*Tree{}
-	fmt.Printf("Backtrack()\n")
 }
 
 // Add adds token as a symbol in the parse tree. It's added under the current
 // non-terminal subtree.
 func (b *Builder) Add(token Token) {
-	b.mustEnter("Add")
 	e := b.stack.peek()
 	e.nonTerm.Add(NewTree(token))
 }
@@ -133,7 +101,6 @@ func (b *Builder) Add(token Token) {
 // Internally Match calls Next to grab the next token. In case of a match it adds
 // it by calling Add. Debug info is also added to the debug tree.
 func (b *Builder) Match(tokenTyp tokenType) (ok bool) {
-	b.mustEnter("Match")
 	debugMsg := ""
 	defer func() {
 		dt := b.debugStack.peek()
@@ -186,7 +153,6 @@ func (b *Builder) Enter(nonTerm interface{}) *Builder {
 // The convenient way to call Exit is by using a named boolean return for the
 // non-terminal function, and passing it's address to a deferred Exit.
 func (b *Builder) Exit(result *bool) {
-	b.mustEnter("Exit")
 	if result == nil {
 		panic("Exit result cannot be nil")
 	}
@@ -197,8 +163,9 @@ func (b *Builder) Exit(result *bool) {
 		resetCurrent = true
 		b.skip = false
 	case *result && b.stack.isEmpty():
-		if _, ok := b.next(); ok {
-			b.finalErr = newParsingError("not all tokens consumed")
+		if lastToken, ok := b.Next(); ok {
+			s := fmt.Sprintf("not all tokens consumed, last=%v", lastToken)
+			b.finalErr = newParsingError(s)
 		} else {
 			b.finalEle = e
 		}
@@ -244,10 +211,4 @@ func (b *Builder) DebugTree() *DebugTree {
 // false result. Returns nil otherwise.
 func (b *Builder) Err() *ParsingError {
 	return b.finalErr
-}
-
-func (b Builder) mustEnter(operation string) {
-	if len(b.stack) == 0 {
-		log.Panicf("cannot %s. must Enter a non-terminal first", operation)
-	}
 }
