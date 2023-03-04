@@ -1449,7 +1449,7 @@ method grindo_ctrl_edit(c,nw) {
 		p = cut(p,CUT_TIME,0,$.currlength)
 		$.edittrack($.currchan,p)
 	} else {
-		print "Unknown edit character: c"
+		print("Unknown edit character: c")
 	}
 }
 

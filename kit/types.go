@@ -1,7 +1,5 @@
 package kit
 
-import "github.com/shivamMg/ppds/tree"
-
 // Tree is a parse tree node. Symbol can either be a terminal (Token) or a non-terminal
 // (see Builder's Enter method). Tokens matched using Builder's Match method or added
 // using Builder's Add method, can be retrieved by type asserting Symbol.
@@ -28,7 +26,7 @@ func (t *Tree) Data() interface{} {
 	return t.Symbol
 }
 
-func (t *Tree) Children() (c []tree.Node) {
+func (t *Tree) Children() (c []Node) {
 	for _, subtree := range t.Subtrees {
 		c = append(c, subtree)
 	}
@@ -51,7 +49,7 @@ func (t *Tree) Detach(subtree *Tree) {
 }
 
 func (t *Tree) String() string {
-	return tree.SprintHrn(t)
+	return SprintHrn(t)
 }
 
 // DebugTree is a debug tree node. Can be printed to help tracing the
@@ -76,7 +74,7 @@ func (dt *DebugTree) Data() interface{} {
 	return dt.data
 }
 
-func (dt *DebugTree) Children() (c []tree.Node) {
+func (dt *DebugTree) Children() (c []Node) {
 	for _, child := range dt.subtrees {
 		c = append(c, child)
 	}
@@ -84,5 +82,5 @@ func (dt *DebugTree) Children() (c []tree.Node) {
 }
 
 func (dt *DebugTree) String() string {
-	return tree.SprintHrn(dt)
+	return SprintHrn(dt)
 }

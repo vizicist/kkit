@@ -47,7 +47,7 @@ class faire_dispatch {
 	}
 	method stop() {
 		gestureunnotify($)
-		print "Should be deleting objects"
+		print("Should be deleting objects")
 		for ( i in $.process ) {
 			print("process i=",i," = ",$.process[i])
 			deleteobject($.process[i])

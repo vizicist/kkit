@@ -868,7 +868,7 @@ function apply(target,source,apptype,startquant) {
 	if ( ! defined(TIME) )
 		constant()
 	if ( nargs() == 0 ) {
-		print "usage: apply(target,source, [apptype] )"
+		print("usage: apply(target,source, [apptype] )")
 		return('')
 	}
 	if ( nargs() == 2 )
